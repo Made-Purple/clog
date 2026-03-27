@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.0.5] - 2026-03-27
+### Fixed
+- Fixed GoReleaser not including release notes in GitHub releases
+
 ## [0.0.4] - 2026-03-27
 ### Fixed
 - Fixed release auto-commit not including fragment file deletions
