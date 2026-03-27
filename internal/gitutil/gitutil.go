@@ -88,7 +88,7 @@ func CommitRelease(version string, fragmentDir string, changelogPath string) err
 		if filepath.Base(f) == fragment.SampleFilename {
 			continue
 		}
-		if err := run("git", "rm", f); err != nil {
+		if err := run("git", "rm", "-f", f); err != nil {
 			// If not tracked by git, just stage the removal
 			if err2 := run("git", "add", f); err2 != nil {
 				return fmt.Errorf("removing fragment %s: %w", f, err)
