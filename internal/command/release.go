@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/made-purple/clog/internal/changelog"
+	"github.com/made-purple/clog/internal/color"
 	"github.com/made-purple/clog/internal/fragment"
 	"github.com/made-purple/clog/internal/gitutil"
 	"github.com/made-purple/clog/internal/merge"
@@ -34,17 +35,17 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	// 0. Check for dirty working tree
 	staged, unstaged, untracked, err := gitutil.WorkingTreeStatus()
 	if err == nil && (staged != "" || unstaged != "" || untracked != "") {
-		fmt.Println("Warning: your working tree has uncommitted changes:")
+		color.Warn("Your working tree has uncommitted changes:")
 		if staged != "" {
-			fmt.Printf("\nStaged:\n%s", staged)
+			fmt.Printf("\n%s\n%s", color.Yellow("Staged:"), staged)
 		}
 		if unstaged != "" {
-			fmt.Printf("\nUnstaged:\n%s", unstaged)
+			fmt.Printf("\n%s\n%s", color.Yellow("Unstaged:"), unstaged)
 		}
 		if untracked != "" {
-			fmt.Printf("\nUntracked:\n%s", untracked)
+			fmt.Printf("\n%s\n%s", color.Yellow("Untracked:"), untracked)
 		}
-		fmt.Print("\nContinue with release anyway? (y/n): ")
+		color.Prompt("\nContinue with release anyway? (y/n):")
 		answer, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("reading answer: %w", err)
@@ -73,7 +74,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 
 	fragments, readErrs := fragment.ReadAll(fragmentDir)
 	for _, err := range readErrs {
-		fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "%s %s\n", color.Red("Error:"), err)
 	}
 	if len(readErrs) > 0 {
 		return fmt.Errorf("failed to read some fragment files, aborting release")
@@ -89,7 +90,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	for _, f := range fragments {
 		errs := fragment.Validate(f)
 		for _, err := range errs {
-			fmt.Fprintf(os.Stderr, "Error: %s\n", err)
+			fmt.Fprintf(os.Stderr, "%s %s\n", color.Red("Error:"), err)
 			hasValidationErrors = true
 		}
 	}
@@ -106,11 +107,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 
 	// 4. Prompt for version
 	if lastVersion != "" {
-		fmt.Printf("Last version: %s\n", lastVersion)
+		fmt.Printf("%s %s\n", color.Dim("Last version:"), lastVersion)
 	} else {
-		fmt.Println("No previous version found.")
+		fmt.Println(color.Dim("No previous version found."))
 	}
-	fmt.Print("Enter new version: ")
+	color.Prompt("Enter new version:")
 	version, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("reading version: %w", err)
@@ -121,7 +122,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	// 5. Prompt for optional metadata
-	fmt.Print("Enter optional metadata (e.g. (98%)(Dev)), or press Enter to skip: ")
+	color.Prompt("Enter optional metadata (e.g. (98%)(Dev)), or press Enter to skip:")
 	metadata, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("reading metadata: %w", err)
@@ -133,10 +134,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	entry := merge.Render(version, date, metadata, merged)
 
 	// 7. Preview and confirm
-	fmt.Println("\n--- Preview ---")
+	fmt.Println()
+	fmt.Println(color.Dim("─── Preview ───"))
 	fmt.Print(entry)
-	fmt.Println("--- End Preview ---")
-	fmt.Print("\nProceed with release? (y/n): ")
+	fmt.Println(color.Dim("─── End Preview ───"))
+	color.Prompt("\nProceed with release? (y/n):")
 	confirm, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("reading confirmation: %w", err)
@@ -151,7 +153,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	if err := os.WriteFile(changelogPath, []byte(result), 0644); err != nil {
 		return fmt.Errorf("writing CHANGELOG.md: %w", err)
 	}
-	fmt.Println("Updated CHANGELOG.md")
+	color.Success("Updated CHANGELOG.md")
 
 	// 9. Delete fragment files
 	dirEntries, err := os.ReadDir(fragmentDir)
@@ -162,14 +164,14 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") && e.Name() != fragment.SampleFilename {
 			path := filepath.Join(fragmentDir, e.Name())
 			if err := os.Remove(path); err != nil {
-				fmt.Fprintf(os.Stderr, "Warning: could not remove %s: %s\n", path, err)
+				fmt.Fprintf(os.Stderr, "%s could not remove %s: %s\n", color.Yellow("!"), path, err)
 			}
 		}
 	}
-	fmt.Println("Removed changelog fragments")
+	color.Success("Removed changelog fragments")
 
 	// 10. Ask about auto-commit
-	fmt.Print("Auto-commit release? (y/n): ")
+	color.Prompt("Auto-commit release? (y/n):")
 	commitAnswer, err := reader.ReadString('\n')
 	if err != nil {
 		return fmt.Errorf("reading commit answer: %w", err)
@@ -178,10 +180,10 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		if err := gitutil.CommitRelease(version, fragmentDir, changelogPath); err != nil {
 			return fmt.Errorf("commit failed: %w", err)
 		}
-		fmt.Printf("Committed: Release v%s\n", version)
+		color.Success("Committed: Release v%s", version)
 
 		// 11. Ask about tagging
-		fmt.Print("Tag release? (y/n): ")
+		color.Prompt("Tag release? (y/n):")
 		tagAnswer, err := reader.ReadString('\n')
 		if err != nil {
 			return fmt.Errorf("reading tag answer: %w", err)
@@ -190,10 +192,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 			if err := gitutil.TagRelease(version); err != nil {
 				return fmt.Errorf("tagging failed: %w", err)
 			}
-			fmt.Printf("Tagged: v%s\n", version)
+			color.Success("Tagged: v%s", version)
 		}
 	}
 
-	fmt.Println("Release complete!")
+	fmt.Println()
+	fmt.Println(color.BoldGreen("Release complete!"))
 	return nil
 }
