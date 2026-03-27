@@ -155,22 +155,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 	color.Success("Updated CHANGELOG.md")
 
-	// 9. Delete fragment files
-	dirEntries, err := os.ReadDir(fragmentDir)
-	if err != nil {
-		return fmt.Errorf("reading %s: %w", fragmentDir, err)
-	}
-	for _, e := range dirEntries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") && e.Name() != fragment.SampleFilename {
-			path := filepath.Join(fragmentDir, e.Name())
-			if err := os.Remove(path); err != nil {
-				fmt.Fprintf(os.Stderr, "%s could not remove %s: %s\n", color.Yellow("!"), path, err)
-			}
-		}
-	}
-	color.Success("Removed changelog fragments")
-
-	// 10. Ask about auto-commit
+	// 9. Ask about auto-commit
 	color.Prompt("Auto-commit release? (y/n):")
 	commitAnswer, err := reader.ReadString('\n')
 	if err != nil {
@@ -180,6 +165,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		if err := gitutil.CommitRelease(version, fragmentDir, changelogPath); err != nil {
 			return fmt.Errorf("commit failed: %w", err)
 		}
+		color.Success("Removed changelog fragments")
 		color.Success("Committed: Release v%s", version)
 
 		// 11. Ask about tagging
@@ -194,6 +180,21 @@ func runRelease(cmd *cobra.Command, args []string) error {
 			}
 			color.Success("Tagged: v%s", version)
 		}
+	} else {
+		// No auto-commit: just delete fragment files from disk
+		dirEntries, err := os.ReadDir(fragmentDir)
+		if err != nil {
+			return fmt.Errorf("reading %s: %w", fragmentDir, err)
+		}
+		for _, e := range dirEntries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") && e.Name() != fragment.SampleFilename {
+				path := filepath.Join(fragmentDir, e.Name())
+				if err := os.Remove(path); err != nil {
+					fmt.Fprintf(os.Stderr, "%s could not remove %s: %s\n", color.Yellow("!"), path, err)
+				}
+			}
+		}
+		color.Success("Removed changelog fragments")
 	}
 
 	fmt.Println()
