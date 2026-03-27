@@ -1,8 +1,7 @@
 deployment:
   - ""
 added:
-  - "`init` now creates a sample.yaml in changelog.d/ as a copy-paste template for manual use"
-  - "`release` warns about uncommitted changes (staged, unstaged, untracked) before proceeding"
+  - "Colorized release output with support for NO_COLOR and non-TTY fallback"
 changed:
   - ""
 deprecated:
@@ -10,9 +9,7 @@ deprecated:
 removed:
   - ""
 fixed:
-  - "`release` tagging now uses annotated tags, fixing failure when tag.gpgSign is enabled"
-  - "`release` auto-commit no longer removes sample.yaml from changelog.d/"
-  - "Git errors now include stderr output instead of only showing exit codes"
+  - "Fixed GoReleaser config for v2 compatibility"
 security:
   - ""
 yanked:
