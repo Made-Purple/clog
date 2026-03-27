@@ -27,11 +27,11 @@ jobs:
           awk -v ver="$VERSION" '
             /^## \[/ { if (found) exit; if (index($0, "## [" ver "]")) found=1 }
             found { print }
-          ' CHANGELOG.md > RELEASE_NOTES.md
+          ' CHANGELOG.md > /tmp/RELEASE_NOTES.md
 
       - uses: goreleaser/goreleaser-action@v6
         with:
           version: latest
-          args: release --clean --release-notes=RELEASE_NOTES.md
+          args: release --clean --release-notes=/tmp/RELEASE_NOTES.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
