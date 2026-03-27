@@ -1,0 +1,19 @@
+deployment:
+  - ""
+added:
+  - "`init` now creates a sample.yaml in changelog.d/ as a copy-paste template for manual use"
+  - "`release` warns about uncommitted changes (staged, unstaged, untracked) before proceeding"
+changed:
+  - ""
+deprecated:
+  - ""
+removed:
+  - ""
+fixed:
+  - "`release` tagging now uses annotated tags, fixing failure when tag.gpgSign is enabled"
+  - "`release` auto-commit no longer removes sample.yaml from changelog.d/"
+  - "Git errors now include stderr output instead of only showing exit codes"
+security:
+  - ""
+yanked:
+  - ""

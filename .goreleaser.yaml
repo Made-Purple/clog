@@ -5,6 +5,8 @@ builds:
     binary: clog
     env:
       - CGO_ENABLED=0
+    ldflags:
+      - -s -w -X github.com/made-purple/clog/internal/command.Version={{ .Version }}
     goos:
       - linux
       - darwin

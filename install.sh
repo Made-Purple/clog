@@ -64,3 +64,44 @@ fi
 
 chmod +x "${INSTALL_DIR}/clog"
 echo "clog v${VERSION} installed to ${INSTALL_DIR}/clog"
+
+# Install shell completions
+CLOG="${INSTALL_DIR}/clog"
+SHELL_NAME="$(basename "${SHELL:-}")"
+
+install_completions() {
+  case "$SHELL_NAME" in
+    bash)
+      COMP_DIR="${BASH_COMPLETION_USER_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions}"
+      mkdir -p "$COMP_DIR"
+      "$CLOG" completion bash > "${COMP_DIR}/clog"
+      echo "Bash completions installed to ${COMP_DIR}/clog"
+      ;;
+    zsh)
+      # Use ~/.zsh/completions and ensure it's in fpath via .zshrc
+      COMP_DIR="${HOME}/.zsh/completions"
+      mkdir -p "$COMP_DIR"
+      "$CLOG" completion zsh > "${COMP_DIR}/_clog"
+      # Add to fpath if not already present
+      if [ -f "${HOME}/.zshrc" ]; then
+        if ! grep -q '\.zsh/completions' "${HOME}/.zshrc" 2>/dev/null; then
+          printf '\n# clog completions\nfpath=(~/.zsh/completions $fpath)\nautoload -Uz compinit && compinit\n' >> "${HOME}/.zshrc"
+          echo "Added completion setup to ~/.zshrc"
+        fi
+      fi
+      echo "Zsh completions installed to ${COMP_DIR}/_clog"
+      ;;
+    fish)
+      COMP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
+      mkdir -p "$COMP_DIR"
+      "$CLOG" completion fish > "${COMP_DIR}/clog.fish"
+      echo "Fish completions installed to ${COMP_DIR}/clog.fish"
+      ;;
+    *)
+      echo "Shell completions: could not detect shell (SHELL=$SHELL). Run 'clog completion --help' to install manually."
+      return
+      ;;
+  esac
+}
+
+install_completions
