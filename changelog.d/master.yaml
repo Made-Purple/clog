@@ -1,7 +1,7 @@
 deployment:
   - ""
 added:
-  - "Colorized release output with support for NO_COLOR and non-TTY fallback"
+  - ""
 changed:
   - ""
 deprecated:
@@ -9,7 +9,7 @@ deprecated:
 removed:
   - ""
 fixed:
-  - "Fixed GoReleaser config for v2 compatibility"
+  - "Fixed release auto-commit not including fragment file deletions"
 security:
   - ""
 yanked:
