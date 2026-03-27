@@ -42,6 +42,10 @@ var allowedCategories = func() map[string]bool {
 	return m
 }()
 
+// SampleFilename is the name of the sample fragment file created by init.
+// It is skipped during ReadAll so it doesn't appear in releases.
+const SampleFilename = "sample.yaml"
+
 // Fragment represents a parsed changelog fragment file.
 type Fragment struct {
 	Filename string
@@ -119,7 +123,7 @@ func ReadAll(dir string) ([]*Fragment, []error) {
 	var errs []error
 
 	for _, entry := range dirEntries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".yaml") || entry.Name() == SampleFilename {
 			continue
 		}
 

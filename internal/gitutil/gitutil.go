@@ -1,10 +1,13 @@
 package gitutil
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/made-purple/clog/internal/fragment"
 )
 
 // BranchName returns the current git branch name.
@@ -24,6 +27,51 @@ func SanitizeBranchName(branch string) string {
 	return s
 }
 
+// WorkingTreeStatus returns a summary of uncommitted changes in the working tree.
+// Returns empty strings if the tree is clean.
+func WorkingTreeStatus() (staged, unstaged, untracked string, err error) {
+	out, err := exec.Command("git", "status", "--porcelain").Output()
+	if err != nil {
+		return "", "", "", fmt.Errorf("checking git status: %w", err)
+	}
+
+	var stagedLines, unstagedLines, untrackedLines []string
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if line == "" {
+			continue
+		}
+		// Porcelain format: XY filename
+		// X = index status, Y = working tree status
+		x := line[0]
+		y := line[1]
+		file := strings.TrimSpace(line[3:])
+
+		if x == '?' {
+			untrackedLines = append(untrackedLines, file)
+		} else {
+			if x != ' ' {
+				stagedLines = append(stagedLines, file)
+			}
+			if y != ' ' {
+				unstagedLines = append(unstagedLines, file)
+			}
+		}
+	}
+
+	format := func(lines []string) string {
+		if len(lines) == 0 {
+			return ""
+		}
+		var b strings.Builder
+		for _, l := range lines {
+			b.WriteString("  " + l + "\n")
+		}
+		return b.String()
+	}
+
+	return format(stagedLines), format(unstagedLines), format(untrackedLines), nil
+}
+
 // CommitRelease stages the changelog and removed fragments, then commits.
 func CommitRelease(version string, fragmentDir string, changelogPath string) error {
 	// Stage the updated changelog
@@ -37,6 +85,9 @@ func CommitRelease(version string, fragmentDir string, changelogPath string) err
 		return fmt.Errorf("globbing fragments: %w", err)
 	}
 	for _, f := range yamls {
+		if filepath.Base(f) == fragment.SampleFilename {
+			continue
+		}
 		if err := run("git", "rm", f); err != nil {
 			// If not tracked by git, just stage the removal
 			if err2 := run("git", "add", f); err2 != nil {
@@ -56,7 +107,7 @@ func CommitRelease(version string, fragmentDir string, changelogPath string) err
 // TagRelease creates a git tag for the release version.
 func TagRelease(version string) error {
 	tag := fmt.Sprintf("v%s", version)
-	if err := run("git", "tag", tag); err != nil {
+	if err := run("git", "tag", "-a", tag, "-m", fmt.Sprintf("Release %s", tag)); err != nil {
 		return fmt.Errorf("creating tag %s: %w", tag, err)
 	}
 	return nil
@@ -64,7 +115,13 @@ func TagRelease(version string) error {
 
 func run(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
-	cmd.Stdout = nil
-	cmd.Stderr = nil
-	return cmd.Run()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		if stderr.Len() > 0 {
+			return fmt.Errorf("%w: %s", err, strings.TrimSpace(stderr.String()))
+		}
+		return err
+	}
+	return nil
 }

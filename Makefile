@@ -1,7 +1,9 @@
 .PHONY: build test install clean
 
+VERSION ?= dev
+
 build:
-	go build -o clog ./cmd/clog
+	go build -ldflags "-X github.com/made-purple/clog/internal/command.Version=$(VERSION)" -o clog ./cmd/clog
 
 test:
 	go test ./...

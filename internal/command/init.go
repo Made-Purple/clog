@@ -3,7 +3,9 @@ package command
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/made-purple/clog/internal/fragment"
 	"github.com/spf13/cobra"
 )
 
@@ -34,6 +36,12 @@ var initCmd = &cobra.Command{
 			return fmt.Errorf("creating changelog.d: %w", err)
 		}
 		fmt.Println("Created changelog.d/")
+
+		samplePath := filepath.Join("changelog.d", fragment.SampleFilename)
+		if err := os.WriteFile(samplePath, fragment.Template(), 0644); err != nil {
+			return fmt.Errorf("creating %s: %w", samplePath, err)
+		}
+		fmt.Printf("Created %s\n", samplePath)
 
 		if _, err := os.Stat("CHANGELOG.md"); os.IsNotExist(err) {
 			if err := os.WriteFile("CHANGELOG.md", []byte(defaultChangelog), 0644); err != nil {

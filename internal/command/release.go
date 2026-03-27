@@ -31,6 +31,30 @@ var releaseCmd = &cobra.Command{
 func runRelease(cmd *cobra.Command, args []string) error {
 	reader := bufio.NewReader(os.Stdin)
 
+	// 0. Check for dirty working tree
+	staged, unstaged, untracked, err := gitutil.WorkingTreeStatus()
+	if err == nil && (staged != "" || unstaged != "" || untracked != "") {
+		fmt.Println("Warning: your working tree has uncommitted changes:")
+		if staged != "" {
+			fmt.Printf("\nStaged:\n%s", staged)
+		}
+		if unstaged != "" {
+			fmt.Printf("\nUnstaged:\n%s", unstaged)
+		}
+		if untracked != "" {
+			fmt.Printf("\nUntracked:\n%s", untracked)
+		}
+		fmt.Print("\nContinue with release anyway? (y/n): ")
+		answer, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("reading answer: %w", err)
+		}
+		if strings.ToLower(strings.TrimSpace(answer)) != "y" {
+			fmt.Println("Release cancelled. Clean your working tree and try again.")
+			return nil
+		}
+	}
+
 	// 1. Read and parse CHANGELOG.md
 	cl, err := changelog.Read(changelogPath)
 	if err != nil {
@@ -135,7 +159,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("reading %s: %w", fragmentDir, err)
 	}
 	for _, e := range dirEntries {
-		if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") && e.Name() != fragment.SampleFilename {
 			path := filepath.Join(fragmentDir, e.Name())
 			if err := os.Remove(path); err != nil {
 				fmt.Fprintf(os.Stderr, "Warning: could not remove %s: %s\n", path, err)
