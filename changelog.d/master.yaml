@@ -1,0 +1,16 @@
+deployment:
+  - ""
+added:
+  - ""
+changed:
+  - ""
+deprecated:
+  - ""
+removed:
+  - ""
+fixed:
+  - "Fixed GoReleaser not including release notes in GitHub releases"
+security:
+  - ""
+yanked:
+  - ""
