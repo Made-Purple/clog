@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.0.3] - 2026-03-27
+### Added
+- Colorized release output with support for NO_COLOR and non-TTY fallback
+### Fixed
+- Fixed GoReleaser config for v2 compatibility
+
 ## [0.0.2] - 2026-03-27
 ### Added
 - `init` now creates a sample.yaml in changelog.d/ as a copy-paste template for manual use
