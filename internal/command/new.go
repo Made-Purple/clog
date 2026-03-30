@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	newCmd.Flags().Bool("edit", false, "Open the fragment file in $EDITOR after creation")
+	newCmd.Flags().Bool("edit", false, "Open the fragment file in an editor after creation")
 	rootCmd.AddCommand(newCmd)
 }
 
@@ -59,7 +59,15 @@ var newCmd = &cobra.Command{
 func openEditor(path string) error {
 	editor := os.Getenv("EDITOR")
 	if editor == "" {
-		return fmt.Errorf("EDITOR environment variable not set")
+		editor = os.Getenv("VISUAL")
+	}
+	if editor == "" {
+		if _, err := os.Stat("/usr/bin/editor"); err == nil {
+			editor = "/usr/bin/editor"
+		}
+	}
+	if editor == "" {
+		return fmt.Errorf("no editor found: set $EDITOR or $VISUAL, or install /usr/bin/editor")
 	}
 
 	cmd := exec.Command(editor, path)

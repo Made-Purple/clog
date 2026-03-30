@@ -1,0 +1,16 @@
+deployment:
+  - ""
+added:
+  - "Added a fallback to the default $EDITOR if none is set for hte --edit feature"
+changed:
+  - ""
+deprecated:
+  - ""
+removed:
+  - ""
+fixed:
+  - ""
+security:
+  - ""
+yanked:
+  - ""
