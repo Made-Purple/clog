@@ -4,7 +4,8 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [0.0.6] - 2026-03-30
 ### Added
-- Added a fallback to the default $EDITOR if none is set for hte --edit feature
+- Added a fallback to the default $EDITOR if none is set for the `--edit` feature
+- Release now prompts to update `VERSION` and `package.json` files if found in the project root
 
 ## [0.0.5] - 2026-03-27
 ### Fixed

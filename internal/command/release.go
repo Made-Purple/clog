@@ -13,6 +13,7 @@ import (
 	"github.com/made-purple/clog/internal/fragment"
 	"github.com/made-purple/clog/internal/gitutil"
 	"github.com/made-purple/clog/internal/merge"
+	"github.com/made-purple/clog/internal/versionfile"
 	"github.com/spf13/cobra"
 )
 
@@ -155,6 +156,39 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 	color.Success("Updated CHANGELOG.md")
 
+	// 8b. Check for version files to update
+	var updatedFiles []string
+
+	if _, err := os.Stat("VERSION"); err == nil {
+		color.Prompt("Update VERSION file? (y/n):")
+		vAnswer, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("reading answer: %w", err)
+		}
+		if strings.ToLower(strings.TrimSpace(vAnswer)) == "y" {
+			if err := versionfile.UpdateVersionFile("VERSION", version); err != nil {
+				return fmt.Errorf("updating VERSION: %w", err)
+			}
+			color.Success("Updated VERSION")
+			updatedFiles = append(updatedFiles, "VERSION")
+		}
+	}
+
+	if _, err := os.Stat("package.json"); err == nil {
+		color.Prompt("Update package.json version? (y/n):")
+		pAnswer, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("reading answer: %w", err)
+		}
+		if strings.ToLower(strings.TrimSpace(pAnswer)) == "y" {
+			if err := versionfile.UpdatePackageJSON("package.json", version); err != nil {
+				return fmt.Errorf("updating package.json: %w", err)
+			}
+			color.Success("Updated package.json")
+			updatedFiles = append(updatedFiles, "package.json")
+		}
+	}
+
 	// 9. Ask about auto-commit
 	color.Prompt("Auto-commit release? (y/n):")
 	commitAnswer, err := reader.ReadString('\n')
@@ -162,7 +196,7 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("reading commit answer: %w", err)
 	}
 	if strings.ToLower(strings.TrimSpace(commitAnswer)) == "y" {
-		if err := gitutil.CommitRelease(version, fragmentDir, changelogPath); err != nil {
+		if err := gitutil.CommitRelease(version, fragmentDir, changelogPath, updatedFiles...); err != nil {
 			return fmt.Errorf("commit failed: %w", err)
 		}
 		color.Success("Removed changelog fragments")

@@ -72,8 +72,8 @@ func WorkingTreeStatus() (staged, unstaged, untracked string, err error) {
 	return format(stagedLines), format(unstagedLines), format(untrackedLines), nil
 }
 
-// CommitRelease stages the changelog and removed fragments, then commits.
-func CommitRelease(version string, fragmentDir string, changelogPath string) error {
+// CommitRelease stages the changelog, removed fragments, and any extra files, then commits.
+func CommitRelease(version string, fragmentDir string, changelogPath string, extraFiles ...string) error {
 	// Stage the updated changelog
 	if err := run("git", "add", changelogPath); err != nil {
 		return fmt.Errorf("staging changelog: %w", err)
@@ -93,6 +93,13 @@ func CommitRelease(version string, fragmentDir string, changelogPath string) err
 			if err2 := run("git", "add", f); err2 != nil {
 				return fmt.Errorf("removing fragment %s: %w", f, err)
 			}
+		}
+	}
+
+	// Stage any extra files (e.g., VERSION, package.json)
+	for _, f := range extraFiles {
+		if err := run("git", "add", f); err != nil {
+			return fmt.Errorf("staging %s: %w", f, err)
 		}
 	}
 
