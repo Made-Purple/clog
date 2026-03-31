@@ -1,7 +1,7 @@
 deployment:
   - ""
 added:
-  - "This is a test"
+  - "Added `migrate` command to move entries from a [staging] section in CHANGELOG.md into a fragment file"
 changed:
   - ""
 deprecated:
