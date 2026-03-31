@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.0.7] - 2026-03-31
+### Added
+- Added `migrate` command to move entries from a [staging] section in CHANGELOG.md into a fragment file
+
 ## [0.0.6] - 2026-03-30
 ### Added
 - Added a fallback to the default $EDITOR if none is set for the `--edit` feature
