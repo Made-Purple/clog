@@ -132,5 +132,19 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 	}
 	color.Success("Removed [staging] section from CHANGELOG.md")
 
+	// 10. Ask about auto-commit
+	fmt.Println()
+	color.Prompt("Auto-commit changes? (y/n):")
+	commitAnswer, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("reading commit answer: %w", err)
+	}
+	if strings.ToLower(strings.TrimSpace(commitAnswer)) == "y" {
+		if err := gitutil.CommitMigrate(changelogPath, path); err != nil {
+			return fmt.Errorf("commit failed: %w", err)
+		}
+		color.Success("Committed: Migrated changelog entries to changelog fragments")
+	}
+
 	return nil
 }

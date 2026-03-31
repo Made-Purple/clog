@@ -111,6 +111,20 @@ func CommitRelease(version string, fragmentDir string, changelogPath string, ext
 	return nil
 }
 
+// CommitMigrate stages the changelog and fragment file, then commits with a migration message.
+func CommitMigrate(changelogPath string, fragmentPath string) error {
+	if err := run("git", "add", changelogPath); err != nil {
+		return fmt.Errorf("staging changelog: %w", err)
+	}
+	if err := run("git", "add", fragmentPath); err != nil {
+		return fmt.Errorf("staging fragment: %w", err)
+	}
+	if err := run("git", "commit", "-m", "Migrated changelog entries to changelog fragments"); err != nil {
+		return fmt.Errorf("committing migration: %w", err)
+	}
+	return nil
+}
+
 // TagRelease creates a git tag for the release version.
 func TagRelease(version string) error {
 	tag := fmt.Sprintf("v%s", version)
