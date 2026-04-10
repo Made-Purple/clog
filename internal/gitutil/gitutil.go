@@ -27,6 +27,32 @@ func SanitizeBranchName(branch string) string {
 	return s
 }
 
+// MergeBase returns the merge-base commit between HEAD and the given base ref.
+func MergeBase(base string) (string, error) {
+	out, err := exec.Command("git", "merge-base", "HEAD", base).Output()
+	if err != nil {
+		return "", fmt.Errorf("finding merge-base with %s (is it fetched?): %w", base, err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// FileAtRef returns the contents of a file at the given git ref.
+// Returns ("", nil) if the file did not exist at that ref.
+func FileAtRef(ref, path string) (string, error) {
+	cmd := exec.Command("git", "show", ref+":"+path)
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Run(); err != nil {
+		msg := stderr.String()
+		if strings.Contains(msg, "does not exist") || strings.Contains(msg, "exists on disk, but not in") {
+			return "", nil
+		}
+		return "", fmt.Errorf("reading %s at %s: %w: %s", path, ref, err, strings.TrimSpace(msg))
+	}
+	return stdout.String(), nil
+}
+
 // WorkingTreeStatus returns a summary of uncommitted changes in the working tree.
 // Returns empty strings if the tree is clean.
 func WorkingTreeStatus() (staged, unstaged, untracked string, err error) {

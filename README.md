@@ -165,6 +165,22 @@ git add changelog.d/your-branch-name.yaml
 git commit -m "Add changelog fragment"
 ```
 
+### Migrating from a `[staging]` section
+
+If your project still adds entries under a `## [staging]` section in `CHANGELOG.md` rather than as fragments, `clog migrate` moves the staging entries *you added on this branch* into a new fragment file named after your branch.
+
+```bash
+clog migrate
+```
+
+It compares staging against the merge-base with `origin/development`, so entries that were already in `[staging]` on the base branch are left alone and only your additions are migrated. Use `--base` to compare against a different ref:
+
+```bash
+clog migrate --base origin/master
+```
+
+After confirmation, the migrated lines are removed from `[staging]` (the rest of the section is preserved) and you're offered an auto-commit.
+
 ---
 
 ## For Maintainers

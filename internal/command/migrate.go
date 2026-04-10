@@ -15,6 +15,7 @@ import (
 )
 
 func init() {
+	migrateCmd.Flags().String("base", "origin/development", "Base branch to diff staging entries against")
 	rootCmd.AddCommand(migrateCmd)
 }
 
@@ -43,6 +44,31 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 	}
 	if staging == nil {
 		fmt.Println("No [staging] section found in CHANGELOG.md.")
+		return nil
+	}
+
+	// 2a. Subtract staging entries that already existed on the base branch,
+	// so we only migrate lines added on this branch/PR.
+	base, _ := cmd.Flags().GetString("base")
+	mergeBase, err := gitutil.MergeBase(base)
+	if err != nil {
+		return err
+	}
+	baseContent, err := gitutil.FileAtRef(mergeBase, changelogPath)
+	if err != nil {
+		return err
+	}
+	var baseStaging map[string][]string
+	if baseContent != "" {
+		baseCl := changelog.ParseContent(baseContent)
+		baseStaging, err = changelog.ExtractStaging(baseCl)
+		if err != nil {
+			return fmt.Errorf("parsing staging at %s: %w", base, err)
+		}
+	}
+	staging = diffStaging(staging, baseStaging)
+	if len(staging) == 0 {
+		fmt.Printf("No new [staging] entries on this branch compared to %s.\n", base)
 		return nil
 	}
 
@@ -125,12 +151,12 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 	}
 	color.Success("Written %s", path)
 
-	// 9. Remove staging section from CHANGELOG.md
-	updated := changelog.RemoveStaging(cl)
+	// 9. Remove the migrated entries from [staging], preserving entries from the base branch.
+	updated := changelog.RemoveStagingEntries(cl, staging)
 	if err := os.WriteFile(changelogPath, []byte(updated), 0644); err != nil {
 		return fmt.Errorf("writing CHANGELOG.md: %w", err)
 	}
-	color.Success("Removed [staging] section from CHANGELOG.md")
+	color.Success("Removed migrated entries from [staging] in CHANGELOG.md")
 
 	// 10. Ask about auto-commit
 	fmt.Println()
@@ -147,4 +173,22 @@ func runMigrate(cmd *cobra.Command, args []string) error {
 	}
 
 	return nil
+}
+
+// diffStaging returns the entries in current that are not present in base,
+// preserving per-category order from current.
+func diffStaging(current, base map[string][]string) map[string][]string {
+	result := make(map[string][]string)
+	for cat, entries := range current {
+		seen := make(map[string]bool, len(base[cat]))
+		for _, e := range base[cat] {
+			seen[e] = true
+		}
+		for _, e := range entries {
+			if !seen[e] {
+				result[cat] = append(result[cat], e)
+			}
+		}
+	}
+	return result
 }

@@ -173,3 +173,132 @@ func TestRemoveStaging(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveStagingEntries(t *testing.T) {
+	tests := []struct {
+		name     string
+		header   string
+		entries  string
+		footer   string
+		toRemove map[string][]string
+		check    func(t *testing.T, result string)
+	}{
+		{
+			name:    "partial removal within a category keeps header and other entries",
+			header:  "# Changelog\n\n",
+			entries: "## [staging]\n### Changed\n- Keep me\n- Remove me\n- Also keep\n\n## [1.0.0] - 2026-01-01\n### Added\n- Feature\n",
+			toRemove: map[string][]string{
+				"changed": {"Remove me"},
+			},
+			check: func(t *testing.T, result string) {
+				if !strings.Contains(result, "[staging]") {
+					t.Error("staging section dropped when it should remain")
+				}
+				if !strings.Contains(result, "### Changed") {
+					t.Error("category header dropped when entries remain")
+				}
+				if !strings.Contains(result, "- Keep me") || !strings.Contains(result, "- Also keep") {
+					t.Error("non-removed entries were dropped")
+				}
+				if strings.Contains(result, "- Remove me") {
+					t.Error("targeted entry was not removed")
+				}
+				if !strings.Contains(result, "## [1.0.0]") {
+					t.Error("existing version entry was removed")
+				}
+			},
+		},
+		{
+			name:    "removing all entries in a category drops its header",
+			header:  "# Changelog\n\n",
+			entries: "## [staging]\n### Changed\n- Only one\n### Fixed\n- Keep me\n\n## [1.0.0] - 2026-01-01\n",
+			toRemove: map[string][]string{
+				"changed": {"Only one"},
+			},
+			check: func(t *testing.T, result string) {
+				if !strings.Contains(result, "[staging]") {
+					t.Error("staging section dropped prematurely")
+				}
+				if strings.Contains(result, "### Changed") {
+					t.Error("empty category header was not dropped")
+				}
+				if !strings.Contains(result, "### Fixed") || !strings.Contains(result, "- Keep me") {
+					t.Error("other category was incorrectly affected")
+				}
+			},
+		},
+		{
+			name:    "removing every entry drops the whole staging section",
+			header:  "# Changelog\n\n",
+			entries: "## [staging]\n### Added\n- A\n### Fixed\n- B\n\n## [1.0.0] - 2026-01-01\n### Added\n- Feature\n",
+			toRemove: map[string][]string{
+				"added": {"A"},
+				"fixed": {"B"},
+			},
+			check: func(t *testing.T, result string) {
+				if strings.Contains(result, "[staging]") {
+					t.Error("empty staging section was not removed")
+				}
+				if !strings.Contains(result, "## [1.0.0]") {
+					t.Error("existing version entry was removed")
+				}
+			},
+		},
+		{
+			name:    "empty toRemove is a no-op",
+			header:  "# Changelog\n\n",
+			entries: "## [staging]\n### Added\n- A\n\n## [1.0.0] - 2026-01-01\n",
+			toRemove: map[string][]string{},
+			check: func(t *testing.T, result string) {
+				if !strings.Contains(result, "- A") {
+					t.Error("no-op dropped an entry")
+				}
+				if !strings.Contains(result, "[staging]") {
+					t.Error("no-op dropped the staging section")
+				}
+			},
+		},
+		{
+			name:    "entry not present in staging is ignored",
+			header:  "# Changelog\n\n",
+			entries: "## [staging]\n### Added\n- Real entry\n",
+			toRemove: map[string][]string{
+				"added": {"Ghost entry"},
+			},
+			check: func(t *testing.T, result string) {
+				if !strings.Contains(result, "- Real entry") {
+					t.Error("real entry was incorrectly removed")
+				}
+			},
+		},
+		{
+			name:    "preserves footer",
+			header:  "# Changelog\n\n",
+			entries: "## [staging]\n### Added\n- A\n",
+			footer:  "# Notes\nSome notes\n",
+			toRemove: map[string][]string{
+				"added": {"A"},
+			},
+			check: func(t *testing.T, result string) {
+				if !strings.Contains(result, "# Notes") {
+					t.Error("footer was removed")
+				}
+				if strings.Contains(result, "[staging]") {
+					t.Error("empty staging section was not removed")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cl := &Changelog{
+				Header:  tt.header,
+				Entries: tt.entries,
+				Footer:  tt.footer,
+			}
+			result := RemoveStagingEntries(cl, tt.toRemove)
+			tt.check(t, result)
+		})
+	}
+}
