@@ -302,3 +302,86 @@ func TestRemoveStagingEntries(t *testing.T) {
 		})
 	}
 }
+
+func TestRemoveStagingEntriesPreservesLayout(t *testing.T) {
+	t.Run("no blank lines between sections stays compact", func(t *testing.T) {
+		cl := &Changelog{
+			Header: "# Changelog\n\n",
+			Entries: "## [staging]\n" +
+				"### Deployment\n" +
+				"- Deploy note\n" +
+				"### Added\n" +
+				"- Added thing\n" +
+				"### Changed\n" +
+				"- Changed thing\n" +
+				"### Security\n" +
+				"- Security thing\n",
+		}
+		result := RemoveStagingEntries(cl, map[string][]string{
+			"changed": {"Changed thing"},
+		})
+		want := "# Changelog\n\n" +
+			"## [staging]\n" +
+			"### Deployment\n" +
+			"- Deploy note\n" +
+			"### Added\n" +
+			"- Added thing\n" +
+			"### Security\n" +
+			"- Security thing\n"
+		if result != want {
+			t.Errorf("layout not preserved.\nwant:\n%q\ngot:\n%q", want, result)
+		}
+	})
+
+	t.Run("blank lines between sections are preserved", func(t *testing.T) {
+		cl := &Changelog{
+			Header: "# Changelog\n\n",
+			Entries: "## [staging]\n" +
+				"### Added\n" +
+				"- A\n" +
+				"\n" +
+				"### Changed\n" +
+				"- B\n" +
+				"\n" +
+				"### Fixed\n" +
+				"- C\n",
+		}
+		result := RemoveStagingEntries(cl, map[string][]string{
+			"changed": {"B"},
+		})
+		if !strings.Contains(result, "- A\n\n### Fixed") {
+			t.Errorf("expected blank line preserved between Added and Fixed, got:\n%s", result)
+		}
+		if strings.Contains(result, "### Changed") || strings.Contains(result, "- B") {
+			t.Errorf("Changed section should be removed, got:\n%s", result)
+		}
+	})
+
+	t.Run("partial removal in middle category leaves header", func(t *testing.T) {
+		cl := &Changelog{
+			Header: "# Changelog\n\n",
+			Entries: "## [staging]\n" +
+				"### Added\n" +
+				"- A\n" +
+				"### Changed\n" +
+				"- Keep\n" +
+				"- Drop\n" +
+				"### Fixed\n" +
+				"- F\n",
+		}
+		result := RemoveStagingEntries(cl, map[string][]string{
+			"changed": {"Drop"},
+		})
+		want := "# Changelog\n\n" +
+			"## [staging]\n" +
+			"### Added\n" +
+			"- A\n" +
+			"### Changed\n" +
+			"- Keep\n" +
+			"### Fixed\n" +
+			"- F\n"
+		if result != want {
+			t.Errorf("partial removal corrupted layout.\nwant:\n%q\ngot:\n%q", want, result)
+		}
+	})
+}

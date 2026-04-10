@@ -1,0 +1,2 @@
+fixed:
+  - "`clog migrate` no longer inserts blank lines between staging categories when removing migrated entries; the original layout of `CHANGELOG.md` is preserved."

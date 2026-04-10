@@ -116,85 +116,70 @@ func RemoveStagingEntries(cl *Changelog, toRemove map[string][]string) string {
 		removeSets[cat] = s
 	}
 
-	type catBlock struct {
-		headerLine string
-		entries    []string
-	}
-	var blocks []catBlock
-	var currentCat string
-	var currentHeader string
-	var currentEntries []string
-	flush := func() {
-		if currentHeader == "" {
-			return
-		}
-		blocks = append(blocks, catBlock{headerLine: currentHeader, entries: currentEntries})
-		currentHeader = ""
-		currentEntries = nil
-		currentCat = ""
-	}
-
+	// First pass: count surviving entries per category, so we know which
+	// category headers (and the whole staging section) to drop.
+	survivors := make(map[string]int)
+	totalSurvivors := 0
+	var cat string
 	for i := startIdx + 1; i < endIdx; i++ {
 		line := lines[i]
 		if m := categoryLineRe.FindStringSubmatch(line); m != nil {
-			flush()
-			catDisplay := strings.TrimSpace(m[1])
-			currentCat = reverse[strings.ToLower(catDisplay)]
-			currentHeader = line
+			cat = reverse[strings.ToLower(strings.TrimSpace(m[1]))]
+			if _, ok := survivors[cat]; !ok {
+				survivors[cat] = 0
+			}
 			continue
 		}
-		if currentCat != "" && strings.HasPrefix(line, "- ") {
+		if cat != "" && strings.HasPrefix(line, "- ") {
 			entry := strings.TrimPrefix(line, "- ")
-			if removeSets[currentCat] != nil && removeSets[currentCat][entry] {
+			if removeSets[cat] != nil && removeSets[cat][entry] {
 				continue
 			}
-			currentEntries = append(currentEntries, line)
+			survivors[cat]++
+			totalSurvivors++
+		}
+	}
+
+	if totalSurvivors == 0 {
+		// Nothing left in staging — drop the entire section.
+		return RemoveStaging(cl)
+	}
+
+	// Second pass: emit lines, skipping removed entries and any category whose
+	// entries are all being removed. This preserves whatever blank-line layout
+	// the source already had.
+	var out []string
+	out = append(out, lines[:startIdx]...)
+	out = append(out, lines[startIdx]) // "## [staging]" header
+	cat = ""
+	skipping := false
+	for i := startIdx + 1; i < endIdx; i++ {
+		line := lines[i]
+		if m := categoryLineRe.FindStringSubmatch(line); m != nil {
+			cat = reverse[strings.ToLower(strings.TrimSpace(m[1]))]
+			if survivors[cat] == 0 {
+				skipping = true
+				continue
+			}
+			skipping = false
+			out = append(out, line)
 			continue
 		}
-		// Blank lines or other content within the current category — keep only
-		// if we're currently inside a category block (they'll be re-emitted).
-		if currentCat != "" {
-			currentEntries = append(currentEntries, line)
-		}
-	}
-	flush()
-
-	// Trim trailing blank lines from each block and drop blocks with no entries.
-	var kept []catBlock
-	for _, b := range blocks {
-		hasEntry := false
-		for _, e := range b.entries {
-			if strings.HasPrefix(e, "- ") {
-				hasEntry = true
-				break
-			}
-		}
-		if !hasEntry {
+		if skipping {
+			// Drop entries and any blank/other lines belonging to the removed category.
 			continue
 		}
-		// Drop trailing blank lines.
-		for len(b.entries) > 0 && strings.TrimSpace(b.entries[len(b.entries)-1]) == "" {
-			b.entries = b.entries[:len(b.entries)-1]
-		}
-		kept = append(kept, b)
-	}
-
-	var newLines []string
-	newLines = append(newLines, lines[:startIdx]...)
-	if len(kept) > 0 {
-		newLines = append(newLines, lines[startIdx]) // "## [staging]" header
-		for i, b := range kept {
-			if i > 0 {
-				newLines = append(newLines, "")
+		if cat != "" && strings.HasPrefix(line, "- ") {
+			entry := strings.TrimPrefix(line, "- ")
+			if removeSets[cat] != nil && removeSets[cat][entry] {
+				continue
 			}
-			newLines = append(newLines, b.headerLine)
-			newLines = append(newLines, b.entries...)
 		}
-		newLines = append(newLines, "")
+		out = append(out, line)
 	}
-	newLines = append(newLines, lines[endIdx:]...)
+	out = append(out, lines[endIdx:]...)
 
-	newEntries := strings.TrimSpace(strings.Join(newLines, "\n"))
+	newEntries := strings.TrimSpace(strings.Join(out, "\n"))
 	if newEntries != "" {
 		newEntries += "\n"
 	}
