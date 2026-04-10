@@ -1,2 +1,0 @@
-changed:
-  - "`clog migrate` now only migrates staging entries added on the current branch, comparing against the merge-base with `origin/development` (override with `--base`). Entries inherited from the base branch are left in `[staging]` so the merge back is clean."

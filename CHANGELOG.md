@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.0.9] - 2026-04-10
+### Changed
+- `clog migrate` now only migrates staging entries added on the current branch, comparing against the merge-base with `origin/development` (override with `--base`). Entries inherited from the base branch are left in `[staging]` so the merge back is clean.
+
 ## [0.0.8] - 2026-03-31
 ### Added
 - Added `migrate` command to move entries from a [staging] section in CHANGELOG.md into a fragment file, with auto-commit support
