@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.0.10] - 2026-04-10
+### Fixed
+- `clog migrate` no longer inserts blank lines between staging categories when removing migrated entries; the original layout of `CHANGELOG.md` is preserved.
+
 ## [0.0.9] - 2026-04-10
 ### Changed
 - `clog migrate` now only migrates staging entries added on the current branch, comparing against the merge-base with `origin/development` (override with `--base`). Entries inherited from the base branch are left in `[staging]` so the merge back is clean.
