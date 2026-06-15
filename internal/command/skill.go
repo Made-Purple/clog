@@ -18,7 +18,15 @@ func init() {
 	skillInstallCmd.Flags().Bool("codex", false, "Install the skill for Codex")
 	skillInstallCmd.Flags().Bool("global", false, "Install into your home config dir (~/.claude, ~/.codex)")
 	skillInstallCmd.Flags().Bool("project", false, "Install into this project (.claude, .codex)")
+
+	skillUninstallCmd.Flags().Bool("claude", false, "Remove the skill from Claude")
+	skillUninstallCmd.Flags().Bool("codex", false, "Remove the skill from Codex")
+	skillUninstallCmd.Flags().Bool("global", false, "Remove from your home config dir (~/.claude, ~/.codex)")
+	skillUninstallCmd.Flags().Bool("project", false, "Remove from this project (.claude, .codex)")
+	skillUninstallCmd.Flags().Bool("force", false, "Remove even if the skill was modified from the installed version")
+
 	skillCmd.AddCommand(skillInstallCmd)
+	skillCmd.AddCommand(skillUninstallCmd)
 	rootCmd.AddCommand(skillCmd)
 }
 
@@ -62,7 +70,8 @@ func runSkillInstall(cmd *cobra.Command, args []string) error {
 			agents = append(agents, skill.Codex)
 		}
 	} else {
-		selected, err := promptAgents(reader)
+		selected, err := promptAgents(reader,
+			"Install the clog skill for which assistant(s)?", "detected", skill.Agent.Detected)
 		if err != nil {
 			return err
 		}
@@ -83,7 +92,7 @@ func runSkillInstall(cmd *cobra.Command, args []string) error {
 			scopes = append(scopes, skill.Project)
 		}
 	} else {
-		scope, err := promptScope(reader)
+		scope, err := promptScope(reader, "Where should the skill be installed?")
 		if err != nil {
 			return err
 		}
@@ -108,24 +117,123 @@ func runSkillInstall(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// promptAgents asks which assistants to install for. Detected assistants are
-// pre-selected as the default (chosen by pressing Enter).
-func promptAgents(reader *bufio.Reader) ([]skill.Agent, error) {
+var skillUninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Remove the clog skill from Claude and/or Codex",
+	Long: `Remove the clog skill from the skill directory of one or more AI coding
+assistants.
+
+Run with no flags to choose interactively. Use flags to skip the prompts:
+
+  clog skill uninstall --claude --global     # Claude, ~/.claude/skills/clog
+  clog skill uninstall --codex --project     # Codex, .codex/skills/clog
+
+A skill that has been modified from the installed version is left in place; pass
+--force to remove it anyway.`,
+	// A "modified, use --force" stop is a runtime condition, not a usage error,
+	// so don't dump the usage text on it.
+	SilenceUsage: true,
+	RunE:         runSkillUninstall,
+}
+
+func runSkillUninstall(cmd *cobra.Command, args []string) error {
+	claudeFlag, _ := cmd.Flags().GetBool("claude")
+	codexFlag, _ := cmd.Flags().GetBool("codex")
+	globalFlag, _ := cmd.Flags().GetBool("global")
+	projectFlag, _ := cmd.Flags().GetBool("project")
+	force, _ := cmd.Flags().GetBool("force")
+
+	reader := bufio.NewReader(os.Stdin)
+
+	// Resolve which agents to remove from: flags win, otherwise prompt.
+	var agents []skill.Agent
+	if claudeFlag || codexFlag {
+		if claudeFlag {
+			agents = append(agents, skill.Claude)
+		}
+		if codexFlag {
+			agents = append(agents, skill.Codex)
+		}
+	} else {
+		selected, err := promptAgents(reader,
+			"Remove the clog skill from which assistant(s)?", "installed", installedAnywhere)
+		if err != nil {
+			return err
+		}
+		agents = selected
+	}
+	if len(agents) == 0 {
+		fmt.Println("No assistants selected. Nothing to do.")
+		return nil
+	}
+
+	// Resolve scope(s): flags win (and may combine), otherwise prompt for one.
+	var scopes []skill.Scope
+	if globalFlag || projectFlag {
+		if globalFlag {
+			scopes = append(scopes, skill.Global)
+		}
+		if projectFlag {
+			scopes = append(scopes, skill.Project)
+		}
+	} else {
+		scope, err := promptScope(reader, "Remove the skill from where?")
+		if err != nil {
+			return err
+		}
+		scopes = []skill.Scope{scope}
+	}
+
+	// Remove each agent at each scope.
+	modified := 0
+	for _, s := range scopes {
+		for _, a := range agents {
+			res, err := a.Uninstall(s, force)
+			if err != nil {
+				return err
+			}
+			switch {
+			case res.Removed:
+				color.Success("%s (%s): removed %s", a.Display, scopeLabel(s), res.Path)
+			case res.Existed && res.Customized:
+				fmt.Printf("%s %s (%s): kept %s — modified from the installed version\n",
+					color.Yellow("!"), a.Display, scopeLabel(s), res.Path)
+				modified++
+			default:
+				fmt.Printf("%s %s (%s): not installed\n", color.Dim("•"), a.Display, scopeLabel(s))
+			}
+		}
+	}
+	if modified > 0 {
+		return fmt.Errorf("left %d modified skill(s) in place; re-run with --force to remove", modified)
+	}
+	return nil
+}
+
+// installedAnywhere reports whether the agent has a clog skill in either scope.
+func installedAnywhere(a skill.Agent) bool {
+	return a.Installed(skill.Global) || a.Installed(skill.Project)
+}
+
+// promptAgents asks which assistants to act on. Agents for which isDefault
+// returns true are pre-selected (chosen by pressing Enter) and flagged with
+// hintLabel, e.g. "detected" for install or "installed" for uninstall.
+func promptAgents(reader *bufio.Reader, header, hintLabel string, isDefault func(skill.Agent) bool) ([]skill.Agent, error) {
 	if !isInteractive() {
 		return nil, fmt.Errorf("no terminal available for prompts; pass --claude and/or --codex")
 	}
 
-	fmt.Println("Install the clog skill for which assistant(s)?")
+	fmt.Println(header)
 	for i, a := range skill.Agents {
 		mark := " "
 		hint := ""
-		if a.Detected() {
+		if isDefault(a) {
 			mark = "x"
-			hint = color.Dim(" (detected)")
+			hint = color.Dim(" (" + hintLabel + ")")
 		}
 		fmt.Printf("  %d) [%s] %s%s\n", i+1, mark, a.Display, hint)
 	}
-	color.Prompt("Enter numbers (comma-separated), or press Enter for detected:")
+	color.Prompt(fmt.Sprintf("Enter numbers (comma-separated), or press Enter for %s:", hintLabel))
 
 	line, err := reader.ReadString('\n')
 	if err != nil && !(errors.Is(err, io.EOF) && line != "") {
@@ -137,13 +245,13 @@ func promptAgents(reader *bufio.Reader) ([]skill.Agent, error) {
 	line = strings.TrimSpace(line)
 
 	if line == "" {
-		var detected []skill.Agent
+		var defaults []skill.Agent
 		for _, a := range skill.Agents {
-			if a.Detected() {
-				detected = append(detected, a)
+			if isDefault(a) {
+				defaults = append(defaults, a)
 			}
 		}
-		return detected, nil
+		return defaults, nil
 	}
 
 	var chosen []skill.Agent
@@ -167,13 +275,13 @@ func promptAgents(reader *bufio.Reader) ([]skill.Agent, error) {
 	return dedupeAgents(chosen), nil
 }
 
-// promptScope asks where to install: home config (global) or this project.
-func promptScope(reader *bufio.Reader) (skill.Scope, error) {
+// promptScope asks which scope to act on: home config (global) or this project.
+func promptScope(reader *bufio.Reader, header string) (skill.Scope, error) {
 	if !isInteractive() {
 		return 0, fmt.Errorf("no terminal available for prompts; pass --global or --project")
 	}
 
-	fmt.Println("Where should the skill be installed?")
+	fmt.Println(header)
 	fmt.Printf("  1) global   %s\n", color.Dim("your home config (~/.claude, ~/.codex)"))
 	fmt.Printf("  2) project  %s\n", color.Dim("this repository (.claude, .codex)"))
 	color.Prompt("Enter 1 or 2 (default 1):")

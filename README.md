@@ -50,6 +50,15 @@ clog skill install --claude --codex --global
 Re-running is safe: an unchanged skill is left alone, and an out-of-date one is
 refreshed to match your installed `clog` version.
 
+To remove it again, use the same flags (or answer the prompts):
+
+```bash
+clog skill uninstall --claude --global
+```
+
+A skill you've hand-edited is kept unless you pass `--force`, so local
+customizations aren't thrown away by accident.
+
 ## Quick Start
 
 Initialize a project:

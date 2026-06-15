@@ -114,6 +114,55 @@ func (a Agent) Install(scope Scope) (Result, error) {
 	return Result{Path: path, Updated: true}, nil
 }
 
+// Installed reports whether a clog skill file exists for the agent at the scope.
+func (a Agent) Installed(scope Scope) bool {
+	path, err := a.TargetPath(scope)
+	if err != nil {
+		return false
+	}
+	_, err = os.Stat(path)
+	return err == nil
+}
+
+// UninstallResult reports the outcome of removing a skill.
+type UninstallResult struct {
+	Path       string
+	Existed    bool // a skill file was present before
+	Removed    bool // the file was deleted
+	Customized bool // existing content differed from the embedded SKILL.md
+}
+
+// Uninstall removes the clog skill for the agent at the given scope. If the
+// installed SKILL.md differs from the embedded version (i.e. it was hand-edited),
+// it is left in place unless force is true — the returned result reports
+// Existed=true, Customized=true, Removed=false so the caller can warn. After a
+// successful removal, an empty skills/clog directory is pruned (skills/ is left
+// alone).
+func (a Agent) Uninstall(scope Scope, force bool) (UninstallResult, error) {
+	path, err := a.TargetPath(scope)
+	if err != nil {
+		return UninstallResult{}, err
+	}
+	existing, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return UninstallResult{Path: path}, nil
+		}
+		return UninstallResult{}, fmt.Errorf("reading %s: %w", path, err)
+	}
+	customized := !bytes.Equal(existing, content)
+	if customized && !force {
+		return UninstallResult{Path: path, Existed: true, Customized: true}, nil
+	}
+	if err := os.Remove(path); err != nil {
+		return UninstallResult{}, fmt.Errorf("removing %s: %w", path, err)
+	}
+	// Prune the now-empty skills/clog directory; os.Remove is a no-op if it
+	// still holds other files (e.g. references/), and we never touch skills/.
+	os.Remove(filepath.Dir(path))
+	return UninstallResult{Path: path, Existed: true, Removed: true, Customized: customized}, nil
+}
+
 // AgentByKey returns the supported agent with the given key.
 func AgentByKey(key string) (Agent, bool) {
 	for _, a := range Agents {
