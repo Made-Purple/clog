@@ -7,6 +7,7 @@ added:
   - "New `make test-coverage` target runs the test suite with a coverage profile and prints a per-function breakdown"
 changed:
   - "Release prompts now default to yes, so pressing Enter accepts each yes/no question (shown as `(Y/n)`)"
+  - "Updated the default installatrion path so no root priv required. Migration script added to remove the old installation when installing updates"
 deprecated:
   - ""
 removed:
