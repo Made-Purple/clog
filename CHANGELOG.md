@@ -2,6 +2,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.0] - 2026-06-15 (88.7%)
+### Added
+- New `clog skill install` command installs the clog assistant skill for Claude Code and/or Codex, either globally or in the current project
+- New `clog skill uninstall` command removes the clog skill, keeping any hand-edited skill unless `--force` is given
+- The install script now offers to install the clog skill for any AI assistant it detects (Claude or Codex)
+- New `make test-coverage` target runs the test suite with a coverage profile and prints a per-function breakdown
+### Changed
+- Release prompts now default to yes, so pressing Enter accepts each yes/no question (shown as `(Y/n)`)
+- Updated the default installatrion path so no root priv required. Migration script added to remove the old installation when installing updates
+
 ## [0.0.10] - 2026-04-10
 ### Fixed
 - `clog migrate` no longer inserts blank lines between staging categories when removing migrated entries; the original layout of `CHANGELOG.md` is preserved.
