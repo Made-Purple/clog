@@ -105,3 +105,42 @@ install_completions() {
 }
 
 install_completions
+
+# Offer to install the clog assistant skill for detected AI coding assistants
+# (Claude / Codex). Global only — the per-project install is `clog skill install`.
+offer_skill() {
+  flags=""
+  display=""
+
+  if [ -d "$HOME/.claude" ]; then
+    flags="--claude"
+    display="Claude"
+  fi
+  if [ -d "$HOME/.codex" ]; then
+    flags="$flags --codex"
+    if [ -n "$display" ]; then
+      display="$display and Codex"
+    else
+      display="Codex"
+    fi
+  fi
+
+  # No assistant detected, or no terminal to ask on — skip silently.
+  if [ -z "$flags" ] || [ ! -e /dev/tty ]; then
+    return
+  fi
+
+  printf "\nInstall the clog skill for %s? [Y/n] " "$display" > /dev/tty
+  read answer < /dev/tty || answer=""
+  case "$answer" in
+    ""|y|Y|yes|YES)
+      # shellcheck disable=SC2086 # word-split flags intentionally
+      "$CLOG" skill install --global $flags
+      ;;
+    *)
+      echo "Skipped skill install. Run 'clog skill install' anytime."
+      ;;
+  esac
+}
+
+offer_skill

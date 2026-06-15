@@ -1,7 +1,8 @@
 deployment:
   - ""
 added:
-  - ""
+  - "New `clog skill install` command installs the clog assistant skill for Claude Code and/or Codex, either globally or in the current project"
+  - "The install script now offers to install the clog skill for any AI assistant it detects (Claude or Codex)"
 changed:
   - "Release prompts now default to yes, so pressing Enter accepts each yes/no question (shown as `(Y/n)`)"
 deprecated:

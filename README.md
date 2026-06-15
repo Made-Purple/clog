@@ -24,6 +24,32 @@ INSTALL_DIR=~/.local/bin curl -sSfL https://raw.githubusercontent.com/Made-Purpl
 go install github.com/made-purple/clog/cmd/clog@latest
 ```
 
+### Assistant skill (Claude / Codex)
+
+`clog` ships a skill that teaches an AI coding assistant how to manage your
+changelog fragments. If you have Claude Code or Codex set up (`~/.claude` or
+`~/.codex`), the one-line installer above offers to install it for you.
+
+You can also install it at any time. It works in both Claude Code and Codex —
+the same `SKILL.md` is written to a parallel directory tree:
+
+```bash
+clog skill install
+```
+
+This asks which assistant(s) to install for and whether to install globally
+(`~/.claude/skills/clog`, `~/.codex/skills/clog`) or into the current project
+(`.claude/skills/clog`, `.codex/skills/clog`). Pass flags to skip the prompts:
+
+```bash
+clog skill install --claude --global       # Claude, your home config
+clog skill install --codex --project       # Codex, this repository
+clog skill install --claude --codex --global
+```
+
+Re-running is safe: an unchanged skill is left alone, and an out-of-date one is
+refreshed to match your installed `clog` version.
+
 ## Quick Start
 
 Initialize a project:
