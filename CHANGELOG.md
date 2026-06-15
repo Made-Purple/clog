@@ -2,6 +2,10 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [0.1.1] - 2026-06-15 (88.7%)
+### Fixed
+- Ensure the skills files is tracked in github
+
 ## [0.1.0] - 2026-06-15 (88.7%)
 ### Added
 - New `clog skill install` command installs the clog assistant skill for Claude Code and/or Codex, either globally or in the current project
