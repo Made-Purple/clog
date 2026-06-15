@@ -2,7 +2,14 @@
 set -e
 
 REPO="made-purple/clog"
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+
+# Default to a user-owned directory that is (usually) on PATH, so installing
+# needs no sudo. Override with INSTALL_DIR=... to pick a different directory.
+INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
+
+# Previous default location. Older installs put the binary here, which is
+# root-owned and requires sudo. We migrate away from it after installing.
+OLD_INSTALL_DIR="/usr/local/bin"
 
 # Detect OS
 OS="$(uname -s)"
@@ -54,7 +61,36 @@ curl -sSfL -o "${TMPDIR}/${FILENAME}" "$URL"
 # Extract
 tar -xzf "${TMPDIR}/${FILENAME}" -C "$TMPDIR"
 
+# Migrate away from the old sudo-owned location BEFORE installing the new one.
+# Doing the fragile sudo step first means that if it's declined we abort with
+# nothing changed (old install intact, no new copy) rather than leaving two
+# binaries side by side — where the old one could still shadow the new one on
+# PATH and silently win.
+migrate_old_install() {
+  old_bin="${OLD_INSTALL_DIR}/clog"
+
+  # Nothing to migrate, or the user explicitly targeted the old dir.
+  if [ ! -e "$old_bin" ] || [ "$OLD_INSTALL_DIR" = "$INSTALL_DIR" ]; then
+    return
+  fi
+
+  echo "Found an older clog install at ${old_bin}; removing it before installing..."
+  if [ -w "$OLD_INSTALL_DIR" ]; then
+    rm -f "$old_bin"
+  elif ! sudo rm -f "$old_bin"; then
+    echo "Error: could not remove the old install at ${old_bin}." >&2
+    echo "Removing it needs sudo. Re-run the installer and authorize sudo, or remove" >&2
+    echo "it manually with: sudo rm ${old_bin}" >&2
+    echo "Nothing was changed — your existing install is still in place." >&2
+    exit 1
+  fi
+  echo "Removed old install at ${old_bin}."
+}
+
+migrate_old_install
+
 # Install
+mkdir -p "$INSTALL_DIR"
 if [ -w "$INSTALL_DIR" ]; then
   mv "${TMPDIR}/clog" "${INSTALL_DIR}/clog"
 else
@@ -64,6 +100,17 @@ fi
 
 chmod +x "${INSTALL_DIR}/clog"
 echo "clog v${VERSION} installed to ${INSTALL_DIR}/clog"
+
+# Warn if the install dir isn't on PATH yet so the user can fix it.
+case ":${PATH}:" in
+  *":${INSTALL_DIR}:"*) ;;
+  *)
+    echo ""
+    echo "Warning: ${INSTALL_DIR} is not in your PATH."
+    echo "Add it by appending this to your shell profile (~/.bashrc, ~/.zshrc, ...):"
+    echo "  export PATH=\"${INSTALL_DIR}:\$PATH\""
+    ;;
+esac
 
 # Install shell completions
 CLOG="${INSTALL_DIR}/clog"

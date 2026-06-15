@@ -10,12 +10,14 @@ A changelog fragment manager. Developers create small YAML files (one per branch
 curl -sSfL https://raw.githubusercontent.com/Made-Purple/clog/master/install.sh | sh
 ```
 
-This detects your OS and architecture, downloads the latest release, installs the binary to `/usr/local/bin`, and sets up shell completions for bash, zsh, or fish.
+This detects your OS and architecture, downloads the latest release, installs the binary to `~/.local/bin`, and sets up shell completions for bash, zsh, or fish. If `~/.local/bin` isn't on your `PATH`, the installer prints the line to add to your shell profile.
+
+If an older version was installed to `/usr/local/bin`, the installer removes it first (that one step requires `sudo`) and then installs the new copy. If you decline the `sudo` prompt it stops without changing anything, so you never end up with two versions side by side.
 
 To install to a different directory:
 
 ```bash
-INSTALL_DIR=~/.local/bin curl -sSfL https://raw.githubusercontent.com/Made-Purple/clog/master/install.sh | sh
+INSTALL_DIR=/usr/local/bin curl -sSfL https://raw.githubusercontent.com/Made-Purple/clog/master/install.sh | sh
 ```
 
 ### From source
