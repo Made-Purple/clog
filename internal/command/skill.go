@@ -322,8 +322,10 @@ func dedupeAgents(in []skill.Agent) []skill.Agent {
 	return out
 }
 
-// isInteractive reports whether stdin is a terminal we can prompt on.
-func isInteractive() bool {
+// isInteractive reports whether stdin is a terminal we can prompt on. It is a
+// variable rather than a plain function so tests can simulate an interactive
+// terminal without needing a real PTY.
+var isInteractive = func() bool {
 	info, err := os.Stdin.Stat()
 	if err != nil {
 		return false

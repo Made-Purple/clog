@@ -1,4 +1,4 @@
-.PHONY: build test install clean
+.PHONY: build test test-coverage install clean
 
 VERSION ?= dev
 
@@ -8,8 +8,12 @@ build:
 test:
 	go test ./...
 
+test-coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out
+
 install:
 	go install ./cmd/clog
 
 clean:
-	rm -f clog
+	rm -f clog coverage.out

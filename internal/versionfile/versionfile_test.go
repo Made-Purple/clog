@@ -40,6 +40,13 @@ func TestUpdateVersionFile(t *testing.T) {
 			t.Errorf("got %q, want %q", got, "1.0.0\n")
 		}
 	})
+
+	t.Run("errors when the directory does not exist", func(t *testing.T) {
+		path := filepath.Join(t.TempDir(), "no-such-dir", "VERSION")
+		if err := UpdateVersionFile(path, "1.0.0"); err == nil {
+			t.Fatal("expected error writing into a nonexistent directory")
+		}
+	})
 }
 
 func TestUpdatePackageJSON(t *testing.T) {
@@ -98,6 +105,13 @@ func TestUpdatePackageJSON(t *testing.T) {
 		err := UpdatePackageJSON(path, "1.0.0")
 		if err == nil {
 			t.Fatal("expected error for missing version field")
+		}
+	})
+
+	t.Run("errors on missing file", func(t *testing.T) {
+		err := UpdatePackageJSON(filepath.Join(t.TempDir(), "nope.json"), "1.0.0")
+		if err == nil {
+			t.Fatal("expected error for a missing package.json")
 		}
 	})
 

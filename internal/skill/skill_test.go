@@ -180,3 +180,19 @@ func TestAgentByKey(t *testing.T) {
 		t.Errorf("AgentByKey(nope) ok = true, want false")
 	}
 }
+
+func TestUnknownScope(t *testing.T) {
+	bad := Scope(99)
+	if _, err := Claude.TargetPath(bad); err == nil {
+		t.Errorf("TargetPath(unknown scope): expected an error")
+	}
+	if _, err := Claude.Install(bad); err == nil {
+		t.Errorf("Install(unknown scope): expected an error")
+	}
+	if Claude.Installed(bad) {
+		t.Errorf("Installed(unknown scope) = true, want false")
+	}
+	if _, err := Claude.Uninstall(bad, false); err == nil {
+		t.Errorf("Uninstall(unknown scope): expected an error")
+	}
+}
