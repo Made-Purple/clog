@@ -46,12 +46,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		if untracked != "" {
 			fmt.Printf("\n%s\n%s", color.Yellow("Untracked:"), untracked)
 		}
-		color.Prompt("\nContinue with release anyway? (y/n):")
-		answer, err := reader.ReadString('\n')
+		proceed, err := promptYesNo(reader, "\nContinue with release anyway?")
 		if err != nil {
 			return fmt.Errorf("reading answer: %w", err)
 		}
-		if strings.ToLower(strings.TrimSpace(answer)) != "y" {
+		if !proceed {
 			fmt.Println("Release cancelled. Clean your working tree and try again.")
 			return nil
 		}
@@ -139,12 +138,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	fmt.Println(color.Dim("─── Preview ───"))
 	fmt.Print(entry)
 	fmt.Println(color.Dim("─── End Preview ───"))
-	color.Prompt("\nProceed with release? (y/n):")
-	confirm, err := reader.ReadString('\n')
+	proceed, err := promptYesNo(reader, "\nProceed with release?")
 	if err != nil {
 		return fmt.Errorf("reading confirmation: %w", err)
 	}
-	if strings.ToLower(strings.TrimSpace(confirm)) != "y" {
+	if !proceed {
 		fmt.Println("Release cancelled.")
 		return nil
 	}
@@ -160,12 +158,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	var updatedFiles []string
 
 	if _, err := os.Stat("VERSION"); err == nil {
-		color.Prompt("Update VERSION file? (y/n):")
-		vAnswer, err := reader.ReadString('\n')
+		update, err := promptYesNo(reader, "Update VERSION file?")
 		if err != nil {
 			return fmt.Errorf("reading answer: %w", err)
 		}
-		if strings.ToLower(strings.TrimSpace(vAnswer)) == "y" {
+		if update {
 			if err := versionfile.UpdateVersionFile("VERSION", version); err != nil {
 				return fmt.Errorf("updating VERSION: %w", err)
 			}
@@ -175,12 +172,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	if _, err := os.Stat("package.json"); err == nil {
-		color.Prompt("Update package.json version? (y/n):")
-		pAnswer, err := reader.ReadString('\n')
+		update, err := promptYesNo(reader, "Update package.json version?")
 		if err != nil {
 			return fmt.Errorf("reading answer: %w", err)
 		}
-		if strings.ToLower(strings.TrimSpace(pAnswer)) == "y" {
+		if update {
 			if err := versionfile.UpdatePackageJSON("package.json", version); err != nil {
 				return fmt.Errorf("updating package.json: %w", err)
 			}
@@ -190,12 +186,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	}
 
 	// 9. Ask about auto-commit
-	color.Prompt("Auto-commit release? (y/n):")
-	commitAnswer, err := reader.ReadString('\n')
+	commit, err := promptYesNo(reader, "Auto-commit release?")
 	if err != nil {
 		return fmt.Errorf("reading commit answer: %w", err)
 	}
-	if strings.ToLower(strings.TrimSpace(commitAnswer)) == "y" {
+	if commit {
 		if err := gitutil.CommitRelease(version, fragmentDir, changelogPath, updatedFiles...); err != nil {
 			return fmt.Errorf("commit failed: %w", err)
 		}
@@ -203,12 +198,11 @@ func runRelease(cmd *cobra.Command, args []string) error {
 		color.Success("Committed: Release v%s", version)
 
 		// 11. Ask about tagging
-		color.Prompt("Tag release? (y/n):")
-		tagAnswer, err := reader.ReadString('\n')
+		tag, err := promptYesNo(reader, "Tag release?")
 		if err != nil {
 			return fmt.Errorf("reading tag answer: %w", err)
 		}
-		if strings.ToLower(strings.TrimSpace(tagAnswer)) == "y" {
+		if tag {
 			if err := gitutil.TagRelease(version); err != nil {
 				return fmt.Errorf("tagging failed: %w", err)
 			}
@@ -234,4 +228,21 @@ func runRelease(cmd *cobra.Command, args []string) error {
 	fmt.Println()
 	fmt.Println(color.BoldGreen("Release complete!"))
 	return nil
+}
+
+// promptYesNo asks a yes/no question and returns true for yes. "Yes" is the
+// default: pressing Enter with no input counts as yes, which the prompt signals
+// by capitalising Y in "(Y/n)".
+func promptYesNo(reader *bufio.Reader, question string) (bool, error) {
+	color.Prompt(question + " (Y/n):")
+	answer, err := reader.ReadString('\n')
+	if err != nil {
+		return false, err
+	}
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "", "y", "yes":
+		return true, nil
+	default:
+		return false, nil
+	}
 }
